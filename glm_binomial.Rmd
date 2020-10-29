@@ -1,0 +1,185 @@
+---
+title: "UntitledHW4"
+author: "Yuyao Zhang"
+date: "10/9/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(xtable)
+```
+
+
+```{r}
+data1 = prob1
+#summary(unique(data1))
+
+```
+
+
+## Question 1
+
+
+```{r}
+
+glm1 = glm(gazelleThomsons.present~ as.character(season) + ndvi + topi.count  + zebra.count  + fire + amRivDist + TM100 + LriskDry + T50, family = 'binomial', data = data1)
+
+```
+
+
+```{r}
+
+step(glm1 ,direction = 'backward')
+```
+
+```{r}
+glm_gaz = glm(gazelleThomsons.present ~ as.character(season) + 
+    ndvi  + zebra.count + amRivDist + TM100, family = "binomial", 
+    data = data1)
+
+glm_gaz$coefficients
+
+
+
+exp(glm_gaz$coefficients)
+```
+
+```{r}
+
+summary(glm_gaz)
+
+confint(glm_gaz)
+
+
+```
+
+
+
+
+```{r}
+glm2 = glm(topi.present~ as.character(season) + ndvi + gazelleThomsons.count + zebra.count  + fire + amRivDist + TM100 + LriskDry + T50, family = 'binomial', data = data1)
+
+step(glm2 ,direction = 'backward')
+
+```
+
+```{r}
+
+glm_topi = glm(topi.present ~ as.character(season) + ndvi + amRivDist + 
+    LriskDry , family = "binomial", data = data1)
+summary(glm_topi)
+
+```
+
+```{r}
+xtable(summary(glm_topi))
+exp(glm_topi$coefficients)
+```
+
+
+
+```{r}
+glm3 = glm(zebra.present~ as.character(season) + ndvi + gazelleThomsons.count  + topi.count + fire + amRivDist + TM100 + LriskDry + T50, family = 'binomial', data = data1)
+step(glm3, direction = 'backward')
+
+```
+
+
+
+```{r}
+glm_zebra = glm(zebra.present ~ as.character(season) + ndvi + gazelleThomsons.count + 
+     TM100  + T50, family = "binomial", data = data1)
+summary(glm_zebra)
+```
+
+```{r}
+xtable(confint(glm_zebra))
+exp(glm_zebra$coefficients)
+```
+
+
+
+## Question 2
+
+```{r}
+class(prob2$p2gal)
+```
+
+
+
+```{r}
+data2 = prob2
+glm1 = glm(gazelleThomsons.present~ as.character(season) + ndvi + topi.count  + zebra.count  + fire + amRivDist + TM100 + LriskDry + T50 + as.character(p2gal), family = 'binomial', data = data2)
+```
+
+
+```{r}
+step(glm1 ,direction = 'backward')
+
+
+```
+
+```{r}
+glm_gal2 = glm(formula = gazelleThomsons.present ~ as.character(season) + 
+    ndvi + topi.count + zebra.count + amRivDist + TM100 + as.character(p2gal) , family = "binomial", data = data2)
+summary(glm_gal2)
+```
+
+
+```{r}
+exp(glm_gal2$coefficients)
+xtable(confint(glm_gal2))
+```
+
+
+
+```{r}
+glm2 = glm(topi.present~ as.character(season) + ndvi + gazelleThomsons.count + zebra.count  + fire + amRivDist + TM100 + LriskDry + T50 + as.character(p2top), family = 'binomial', data = data2)
+
+step(glm2 ,direction = 'backward')
+
+
+```
+
+
+```{r}
+glm_top2 = glm(formula = topi.present ~ as.character(season) + ndvi + amRivDist + 
+    LriskDry + as.character(p2top), family = "binomial", data = data2)
+summary(glm_top2)
+
+
+```
+
+```{r}
+exp(glm_top2$coefficients)
+xtable(confint(glm_top2))
+```
+
+
+```{r}
+glm3 = glm(zebra.present~ as.character(season) + ndvi + gazelleThomsons.count  + topi.count + fire + amRivDist + TM100 + LriskDry + T50 + as.character(p2zeb), family = 'binomial', data = data2)
+step(glm3, direction = 'backward')
+
+
+```
+
+```{r}
+glm_zebr2 = glm(formula = zebra.present ~ as.character(season) + ndvi + gazelleThomsons.count + 
+    TM100 + T50 + as.character(p2zeb), family = "binomial", data = data2)
+
+
+
+summary(glm_zebr2)
+```
+
+```{r}
+exp(glm_zebr2$coefficients)
+
+xtable(confint(glm_zebr2))
+```
+

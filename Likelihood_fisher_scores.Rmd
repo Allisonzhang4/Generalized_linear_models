@@ -1,0 +1,347 @@
+---
+title: "glm3"
+author: "Yuyao Zhang"
+date: "9/22/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+---
+title: "GLM3homework"
+author: "Yuyao"
+date: "9/19/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+## Problem 1
+library(Stat2Data)
+library(MASS)
+data(Putts1)
+n=dim(Putts1)[1]
+X=cbind(rep(1,587),Putts1$Length)
+y=Putts1$Made
+
+par(mfrow=c(1,2))
+hist(y, breaks=20)
+
+## Jitter adds a bit of random noise, to see points 
+## that would otherwise fall on top of one another.
+## Observe a tendency for putts to be made at short
+## lengths, and missed at longer lengths.
+
+plot(jitter(X[,2]), jitter(y))
+#dev.off()
+```
+
+## Question 1(a)
+
+```{r}
+
+
+glm1=glm(Made ~ Length, family=binomial(link="logit"), data = Putts1)
+
+glm2 = glm(Made ~ Length, family = binomial(link = 'probit'), data = Putts1)
+
+glm3 = glm(Made ~ Length, family = binomial(link = 'identity'), data = Putts1)
+
+
+testing = data.frame(response=runif(16), Length=c(0:15))
+
+yh1 = predict(glm1, newdata = testing, type = 'response')
+yh2 = predict(glm2, newdata = testing, type = 'response')
+yh3 = predict(glm3, newdata = testing, type = 'response')
+
+
+
+```
+
+
+```{r}
+library(plyr)
+
+total <- data.frame(Putts1)
+a = ddply(total, .(Length), summarise, Summade = sum(Made))
+b = list(NULL)
+for(i in 3:7){
+  b[i] = sum(total$Length==i)
+}
+
+ep = a$Summade/as.numeric(b[3:7])
+
+
+               
+
+
+
+par(mfrow = c(1,2)) 
+
+plot(jitter(X[,2]), jitter(y),xlim = c(0,15), xlab = 'Length', ylab = 'Made')
+points(3:7, ep, col='purple')
+
+
+
+plot(jitter(X[,2]), jitter(y),xlim = c(0,15), xlab = 'Length', ylab = 'Made')
+lines(c(0:15), yh1, lty = 1, lwd =2, col = 'red')
+lines(c(0:15), yh2, lty = 2, lwd =2, col = 'green')
+lines(c(0:15), yh3, lty = 4, lwd =2, col = 'yellow')
+points(3:7, ep, col='purple')
+legend("topright", lwd=1, lty=c(1, 2, 4), col = c('red', 'green' , 'yellow'),legend=c("Logit","Probit","identity"))
+
+```
+I think that probit and logit link functions are more appropriate here. Because the density/made shouldn't exceed $1$ at Length of 0 and at Length of $12$, the identity function goes to negative which is incorrect. The probability density takes the values between [0,1].
+
+## Question 1(b)
+
+```{r}
+logitp = log(ep/(1-ep))
+Length1 = 3:7
+plot(Length1, logitp)
+lines(c(0:15), yh1, lty = 1)
+
+```
+
+## Question 1(c)
+
+
+```{r}
+y = Putts1[,2]
+x = Putts1[,1]
+X = cbind(rep(1,587), x)
+n = length(x)
+## Information matrix
+Fish.info = function(beta) {
+  out11=0
+  out12=0
+  out22=0
+  for (i in 1:n){
+    mu = (exp(beta[1]+beta[2]*x[i]))/(exp(beta[1]+beta[2]*x[i])+1)
+    out11 = out11 + mu - mu^2
+    out12 = out12 + x[i]*(mu-mu^2)
+    out22 = out22 + x[i]^2*(mu - mu^2)
+  }
+  return(cbind(c(out11, out12), c(out12,out22)))  
+}
+
+
+```
+
+
+```{r}
+
+
+steps = 20 
+
+fish.scoring.Bernoulli = function(y, X, start = c(3, -0.5), steps = 20){
+  n = nrow(X)
+  p = ncol(X)
+  
+  beta = matrix(0,2,steps)
+  beta[,1] = start
+  score = rep(0, p)
+  for (i in 2:steps){
+    # betas
+    score[1:p] = t(y- exp(X%*%beta[,(i-1)])/(1+exp(X%*%beta[,(i-1)]))) %*% X 
+    # new
+    hessMat = Fish.info(beta[,(i-1)])
+    beta[,i] = beta[,(i-1)] + MASS::ginv(hessMat) %*% score
+  }
+  return(beta)
+} 
+
+
+fish.out = fish.scoring.Bernoulli(y,X,steps=steps)
+fish.scoring.Bernoulli(y,X,steps=steps)
+
+plot(seq(1,steps,1),fish.out[1,],ylim=c(-3,5), main="Convergence", col="blue", ylab="Parameters")
+points(fish.out[2,], pch=2, col="red")
+```
+
+## Question 1(d)
+
+```{r}
+library(xtable)
+
+var.beta = solve(Fish.info(beta = fish.out[,20]))
+#beta0
+cbind(-1.96*sqrt(var.beta[1,1])+fish.out[,20][1],1.96*sqrt(var.beta[1])+fish.out[,20][1])
+
+#beta1
+cbind(-1.96*sqrt(var.beta[2,2])-fish.out[,20][2],1.96*sqrt(var.beta[2,2])-fish.out[,20][2])
+
+
+
+```
+
+## Question 1(e)
+
+
+```{r}
+print(coef(glm1))
+logLik(glm1)
+summary(glm1)
+
+length(y)
+```
+
+
+```{r}
+
+#loglikelihood function
+
+log.likelihood = function(beta){
+  
+  log_li = 0
+  
+  u = exp(X%*%beta)/(1+exp(X%*%beta))
+  for(i in 1: length(y)){
+    
+    log_li = log_li + y[i]*log(u[i])+(1-y[i])*log(1-u[i])
+    
+  }
+  
+  
+  return(log_li)
+  
+  
+}
+
+loglm1 = log.likelihood(beta = c(coef(glm1)[1], coef(glm1)[2]))
+
+AIC.glm1 = -2*loglm1 + 2*2
+
+print(c(loglm1, AIC.glm1))
+
+# check
+logLik(glm1)
+glm1$aic
+
+
+```
+
+```{r}
+glm0 = glm(Made ~ 1, family=binomial(link="logit"), data = Putts1 )
+loglm0 = log.likelihood(beta = c(coef(glm0)[1], 0))
+AIC.glm0 = -2*loglm0 + 2*1
+
+print(c(loglm0, AIC.glm0))
+
+#check
+
+
+logLik(glm0)
+glm0$aic
+```
+
+
+
+```{r}
+## Problem 2
+time=c(1.67,2.20,2.51,3.00,2.90,4.70,7.53,14.70,27.8,37.4,
+       .8,1,1.37,2.25,2.95,3.70,6.07,6.65,7.05,7.37,
+       .102, .18, .2, .24, .26, .32, .32, .42, .44, .88, 
+       .073, .098, .117, .135, .175, .262, .270, .350, .386, .456)
+stress = c(rep(.87,10), rep(.99,10), rep(1.09,10), rep(1.18,10))
+
+par(mfrow=c(1,2))
+hist(time, breaks=20)
+plot(stress, time)
+#dev.off()
+
+```
+
+
+```{r}
+
+
+glmt=glm(time ~ stress, family=Gamma(link="inverse"))
+xtable(summary(glmt, dispersion=1))
+
+
+summary(glmt, dispersion=1)$coef[,1] ## MLE
+
+
+
+xtable(vcov(glmt)) ## Variance
+
+```
+
+## Question 2a
+
+```{r}
+## Function to evaluate score at beta
+x = stress
+y = time
+n = length(time)
+X = cbind(rep(1,40), x)
+
+score = function(beta) {
+  out1=0
+  out2=0
+  
+  
+  for (i in 1:n){
+    lambda = (beta[1] + beta[2]*x[i])
+    
+    out1 = out1 + 1/lambda - y[i]
+    out2 = out2 + (1/lambda - y[i])*x[i]
+  }
+  return(cbind(out1, out2))  
+}
+
+print(score(c(1,0)))
+
+Fish.info = function(beta) {
+  out11=0
+  out12=0
+  out22=0
+  for (i in 1:n){
+    lambda = (beta[1] + beta[2]*x[i])
+    
+    out11 = out11 + 1/lambda^2
+    out12 = out12 + x[i]/lambda^2
+    out22 = out22 + (x[i])^2/lambda^2
+  }
+  return(cbind(c(out11, out12), c(out12,out22)))  
+}
+
+print(Fish.info(c(1,0)))
+
+solve(Fish.info(c(glmt$coefficients[1],glmt$coefficients[2])))
+```
+
+## Question 2(c)
+
+```{r}
+steps = 20 
+
+fish.scoring.exp = function(y, X, start = c(1,0 ), steps = 20){
+  n = nrow(X)
+  p = ncol(X)
+  
+  beta = matrix(0,2,steps)
+  beta[,1] = start
+  score = rep(0, p)
+  for (i in 2:steps){
+    
+    # new
+    hessMat = Fish.info(beta[,(i-1)])
+    beta[,i] = beta[,(i-1)] + MASS::ginv(hessMat) %*% t(score(beta[,i-1]))
+  }
+  return(beta)
+} 
+
+fish.scoring.exp(y, X, start = c(1,0) )
+
+```
+
+It doesn't match up with the glm results and it does not converge.
